@@ -1,0 +1,15 @@
+program ProgramTest;
+begin
+    a := -10
+    b := 20
+    c := a + b
+    if c = 10 then
+        call testFun1
+    else
+        call testFun2
+    d = a * b
+    read testFile
+    write c
+    while a <> b do
+        a = a * a
+end
