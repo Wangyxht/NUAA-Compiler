@@ -3,7 +3,6 @@
 ## PL0 文法
 
 ```text
-一个PASCAL语言子集（PL/0）词法分析器的设计与实现
 PL/0语言的BNF描述（扩充的巴克斯范式表示法）
 <prog> → program <id>；<block>
 <block> → [<condecl>][<vardecl>][<proc>]<body>
