@@ -43,6 +43,10 @@ public class Lexer {
      */
     private long line = 1;
     /**
+     * 列定位器
+     */
+    private long col = 1;
+    /**
      * 文件读取状态
      */
     private boolean file_end = false;
@@ -111,11 +115,10 @@ public class Lexer {
             if (file_end) throw new Exception("重复读取，文件读取已经完毕");
             int len;
             len = codeReader.read(buffer);
-            if (len < bufferSize){
+            if (len < bufferSize) {
                 file_end = true;
                 buffer[len] = '\0';
-            }
-            else file_end = false;
+            } else file_end = false;
             buffer_ptr = 0;
             ch = buffer[buffer_ptr++];
         } catch (Exception e) {
@@ -132,6 +135,7 @@ public class Lexer {
         try {
             if (buffer_ptr == bufferSize && !file_end) LoadCode();
             else ch = buffer[buffer_ptr++];
+            ++col;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -166,6 +170,7 @@ public class Lexer {
         while (Character.isWhitespace(ch)) {
             if (ch == '\n') {
                 line = line + 1;
+                col = 1;
                 if (txt_output) codeAnalyseWriter.write("\r\n");
             }
             ReadChar();
@@ -182,8 +187,8 @@ public class Lexer {
                 stringBuilder.append(ch);
                 ReadChar();
             }
-            if (Character.isUpperCase(ch) || Character.isLowerCase(ch)) 
-                throw new LexerException(3, ch, line);
+            if (Character.isUpperCase(ch) || Character.isLowerCase(ch))
+                throw new LexerException(3, ch, line, col);
             cur_num = stringBuilder.toString();
             return new Number(Integer.parseInt(cur_num));
         }
@@ -249,7 +254,7 @@ public class Lexer {
                     if (ch == '=') {
                         token_symbol = new Word(":=", Tag.ASSIGN);
                         ReadChar();
-                    } else throw new LexerException(2, ':', line);
+                    } else throw new LexerException(2, ':', line, col);
                 }
                 // 分隔符
                 case '(', ')', ',', ';' -> {
@@ -257,7 +262,7 @@ public class Lexer {
                     ReadChar();
                 }
                 // 非法字符
-                default -> throw new LexerException(1, ch, line);
+                default -> throw new LexerException(1, ch, line, col);
             }
             return token_symbol;
         }

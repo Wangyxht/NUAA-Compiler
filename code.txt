@@ -2,7 +2,7 @@ program ProgramTest;
    begin
        a := -10
        b := 20
-       c := a + b
+       c := a + b啊
        if c = 10 then
            call testFun1
        else
