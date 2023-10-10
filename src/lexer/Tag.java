@@ -18,7 +18,7 @@ public enum Tag {
     MOP,
     /**<b>ASSIGN -> :=</b>*/
     ASSIGN,
-    /** <b>SPLIT -> { | } | [ | ] | ( | ) </b> */
+    /** <b>SPLIT -> { | } | [ | ] | ( | ) | , | ; </b> */
     SPLIT,
     /** <b>EOF:文件末尾</b> */
     EOF,

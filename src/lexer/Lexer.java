@@ -66,7 +66,6 @@ public class Lexer {
             var codeFileInput = new FileInputStream(fileDir);
             codeReader = new InputStreamReader(codeFileInput);
             LoadCode();// 将字符首次导入到缓冲区
-            ReadChar();// 读取首字符
 
             if (txt_output) {
                 var codeFileOutput = new FileOutputStream("code_lex_analyse.txt");
@@ -112,9 +111,16 @@ public class Lexer {
             if (file_end) throw new Exception("重复读取，文件读取已经完毕");
             int len;
             len = codeReader.read(buffer);
-            file_end = (len < bufferSize);
+            if (len < bufferSize){
+                file_end = true;
+                buffer[len] = '\0';
+            }
+            else file_end = false;
+            buffer_ptr = 0;
+            ch = buffer[buffer_ptr++];
         } catch (Exception e) {
             e.printStackTrace();
+            System.exit(1);
         }
 
     }
@@ -164,11 +170,12 @@ public class Lexer {
             }
             ReadChar();
         }
+        // 判断是否位于文件末尾
         if (ch == '\0') {
             return new Token(Tag.EOF);
         }
         // 判断是否为数字
-        if (Character.isDigit(ch)) {
+        else if (Character.isDigit(ch)) {
             String cur_num = "";
             StringBuilder stringBuilder = new StringBuilder(cur_num);
             while (Character.isDigit(ch)) {
@@ -198,7 +205,7 @@ public class Lexer {
         }
         // 判断是否为合法的符号
         else {
-            Token token_symbol = null;
+            Token token_symbol;
             switch (ch) {
                 case '=' -> {
                     token_symbol = new Word("=", Tag.LOP);
@@ -249,6 +256,7 @@ public class Lexer {
                     token_symbol = new Word(String.valueOf(ch), Tag.SPLIT);
                     ReadChar();
                 }
+                // 非法字符
                 default -> throw new LexerException(1, ch, line);
             }
             return token_symbol;

@@ -1,6 +1,6 @@
-program 囖ProgramTest;
+program ProgramTest;
    begin
-       a : -10
+       a := -10
        b := 20
        c := a + b
        if c = 10 then
