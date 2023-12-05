@@ -41,11 +41,15 @@ public class Lexer {
     /**
      * 行定位器
      */
-    private long line = 1;
+    private static long line = 1;
     /**
      * 列定位器
      */
-    private long col = 1;
+    private static long col = 1;
+
+    private static long preLine = 0;
+
+    private static long preCol = 0;
     /**
      * 文件读取状态
      */
@@ -71,7 +75,8 @@ public class Lexer {
             codeReader = new InputStreamReader(codeFileInput);
             LoadCode();// 将字符首次导入到缓冲区
 
-            if (txt_output) {
+            this.txt_output = txt_output;
+            if (this.txt_output) {
                 var codeFileOutput = new FileOutputStream("code_lex_analyse.txt");
                 codeAnalyseWriter = new OutputStreamWriter(codeFileOutput);
             }
@@ -142,35 +147,19 @@ public class Lexer {
     }
 
     /**
-     * 读取缓冲区的一个字符到ch并与传入字符比较
-     *
-     * @param target 待比较字符
-     * @return 字符是否相同
-     */
-    private boolean ReadChar(char target) {
-        try {
-            if (file_end) throw new Exception("文件已读取完毕，无法继续读取");
-            else if (buffer_ptr == bufferSize) LoadCode();
-            else ch = buffer[buffer_ptr++];
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
-        return ch == target;
-    }
-
-    /**
      * 从当前指针位置分析下一个词法单元，不包括空白字符与注释
      *
      * @return 返回词法单元类型及其属性
      * @throws Exception <br>e1:非法字符<br>e2:未补全的 := 符号
      */
-    private Token AnalyseToken() throws Exception {
+    public Token AnalyseToken() throws Exception {
+        preCol = col;
+        preLine = line;
         // 是空白字符
         while (Character.isWhitespace(ch)) {
             if (ch == '\n') {
                 line = line + 1;
-                col = 1;
+                col = 0;
                 if (txt_output) codeAnalyseWriter.write("\r\n");
             }
             ReadChar();
@@ -209,63 +198,61 @@ public class Lexer {
             }
         }
         // 判断是否为合法的符号
-        else {
-            Token token_symbol;
-            switch (ch) {
-                case '=' -> {
-                    token_symbol = new Word("=", Tag.LOP);
-                    ReadChar();
-                }
-                case '<' -> {
-                    ReadChar(); // 继续读取缓冲区下一个字符
-                    if (ch == '=') {
-                        token_symbol = new Word("<=", Tag.LOP);
-                        ReadChar();
-                    } else if (ch == '>') {
-                        token_symbol = new Word("<>", Tag.LOP);
-                        ReadChar();
-                    } else token_symbol = new Word("<", Tag.LOP);
-                }
-                case '>' -> {
-                    ReadChar();// 继续读取缓冲区下一个字符
-                    if (ch == '=') {
-                        token_symbol = new Word(">=", Tag.LOP);
-                        ReadChar();
-                    } else token_symbol = new Word(">", Tag.LOP);
-                }
-                case '+' -> {
-                    token_symbol = new Word("+", Tag.AOP);
-                    ReadChar();
-                }
-                case '-' -> {
-                    token_symbol = new Word("-", Tag.AOP);
-                    ReadChar();
-                }
-                case '*' -> {
-                    token_symbol = new Word("*", Tag.MOP);
-                    ReadChar();
-                }
-                case '/' -> {
-                    token_symbol = new Word("/", Tag.MOP);
-                    ReadChar();
-                }
-                case ':' -> {
-                    ReadChar();
-                    if (ch == '=') {
-                        token_symbol = new Word(":=", Tag.ASSIGN);
-                        ReadChar();
-                    } else throw new LexerException(2, ':', line, col);
-                }
-                // 分隔符
-                case '(', ')', ',', ';' -> {
-                    token_symbol = new Word(String.valueOf(ch), Tag.SPLIT);
-                    ReadChar();
-                }
-                // 非法字符
-                default -> throw new LexerException(1, ch, line, col);
+        Token token_symbol;
+        switch (ch) {
+            case '=' -> {
+                token_symbol = new Word("=", Tag.LOP);
+                ReadChar();
             }
-            return token_symbol;
+            case '<' -> {
+                ReadChar(); // 继续读取缓冲区下一个字符
+                if (ch == '=') {
+                    token_symbol = new Word("<=", Tag.LOP);
+                    ReadChar();
+                } else if (ch == '>') {
+                    token_symbol = new Word("<>", Tag.LOP);
+                    ReadChar();
+                } else token_symbol = new Word("<", Tag.LOP);
+            }
+            case '>' -> {
+                ReadChar();// 继续读取缓冲区下一个字符
+                if (ch == '=') {
+                    token_symbol = new Word(">=", Tag.LOP);
+                    ReadChar();
+                } else token_symbol = new Word(">", Tag.LOP);
+            }
+            case '+' -> {
+                token_symbol = new Word("+", Tag.AOP);
+                ReadChar();
+            }
+            case '-' -> {
+                token_symbol = new Word("-", Tag.AOP);
+                ReadChar();
+            }
+            case '*' -> {
+                token_symbol = new Word("*", Tag.MOP);
+                ReadChar();
+            }
+            case '/' -> {
+                token_symbol = new Word("/", Tag.MOP);
+                ReadChar();
+            }
+            case ':' -> {
+                ReadChar();
+                if (ch == '=') {
+                    token_symbol = new Word(":=", Tag.ASSIGN);
+                    ReadChar();
+                } else throw new LexerException(2, ':', line, col - 1);
+            }
+            // 分隔符
+            case '(', ')', ',', ';' -> {
+                token_symbol = new Word(String.valueOf(ch), Tag.SPLIT);
+                ReadChar();
+            }
+            // 非法字符
+            default -> throw new LexerException(1, ch, line, col);
         }
+        return token_symbol;
     }
 
     private void WriteToken(Token token) throws IOException {
@@ -285,7 +272,7 @@ public class Lexer {
                 token_out_str = "< "
                         + token_word.getTag()
                         + " "
-                        + token_word.getContend()
+                        + token_word.getContent()
                         + " >"
                         + ' ';
                 codeAnalyseWriter.write(token_out_str);
@@ -299,13 +286,37 @@ public class Lexer {
      */
     public ArrayList<Token> AnalyseCode() throws Exception {
         var TokenList = new ArrayList<Token>();
-        while (ch != '\0') {
-            var token = AnalyseToken();
-            TokenList.add(token);
-            if (txt_output) WriteToken(token);
+
+        try {
+            while (ch != '\0') {
+                var token = AnalyseToken();
+                TokenList.add(token);
+                if (txt_output) WriteToken(token);
+            }
+        } catch (LexerException e) {
+            System.out.println((char) 27 + "[31m" + e.getMessage() + (char) 27 + "[0m");
+            txt_output = false;
+            codeAnalyseWriter.close();
+            switch (e.exception_code) {
+                case 1 -> {
+                    ReadChar();
+                }
+                case 2 -> {
+                }
+                case 3 -> {
+                    ReadChar();
+                    while (Character.isUpperCase(ch) ||
+                            Character.isLowerCase(ch) ||
+                            Character.isDigit(ch)) {
+                        ReadChar();
+                    }
+                }
+            }
+            AnalyseCode();
+        }finally {
+            codeAnalyseWriter.close();
+            codeReader.close();
         }
-        codeAnalyseWriter.close();
-        codeReader.close();
         return TokenList;
     }
 
@@ -317,7 +328,23 @@ public class Lexer {
         this.bufferSize = bufferSize;
     }
 
-    public static void main(String[] args) {
+    public static long getLine() {
+        return line;
+    }
+
+    public static long getCol() {
+        return col;
+    }
+
+    public static long getPreLine() {
+        return preLine;
+    }
+
+    public static long getPreCol() {
+        return preCol;
+    }
+
+    public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
         System.out.print("请输入待编译文件的文件路径：");
         String fileDir = scanner.nextLine();

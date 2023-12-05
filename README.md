@@ -79,3 +79,23 @@ end
 
 ## 测试说明
 通过输入代码文本文件路径（IDEA默认为项目目录）进行代码的读取测试，例如本项目中根目录的code.txt文件
+
+```text
+递归下降构造语法树
+  function R(in:↑AST-node):↑AST-node;
+    var nptr,i1,s1,s:↑AST-node;
+    addoplexeme:char;
+    begin
+        if sym=addop then 
+           begin
+             addoplexeme=lexval;
+             advance; //执行一个匹配
+             nptr=T;   //调用T的函数，返回T的综合属性
+             i1=mknode(addoplexeme,in,nptr);//返回R1的继承属性
+             s1=R(i1) //调用R过程形参为R的继承属性，返回R的综合属性
+             s=s1      //执行R.s=R1.s
+           end
+        else s= in   //如果sym不是addop，则R-ε自动匹配，执行R.s=R.i
+        return s
+    end
+```

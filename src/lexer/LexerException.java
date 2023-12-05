@@ -13,7 +13,7 @@ import java.util.HashMap;
 public class LexerException extends Exception {
     static final HashMap<Integer, String> exception_list
             = new HashMap<>();
-    Integer exception_num;
+    public Integer exception_code;
 
     static {
         exception_list.put(1, "[X]001: 存在非法字符。");
@@ -29,17 +29,17 @@ public class LexerException extends Exception {
      *     <li>003 存在非法的ID，数字不能位于标识符开头</li>
      * </ul>
      *
-     * @param exception_num 异常代码
+     * @param exception_code 异常代码
      * @param error_ch      异常字符
      * @param line          异常行数
      * @param col           异常列数
      */
-    public LexerException(int exception_num, char error_ch, long line, long col) {
+    public LexerException(int exception_code, char error_ch, long line, long col) {
         super("位于第" + line + "行" +
                 "第" + col + "列:" +
                 "\"" + error_ch + "\" " +
                 "--" +
-                exception_list.get(exception_num));
-        this.exception_num = exception_num;
+                exception_list.get(exception_code));
+        this.exception_code = exception_code;
     }
 }

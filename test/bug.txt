@@ -1,0 +1,11 @@
+program PROGRAMTEST;
+    const a := 10, b := 3, c:= 2, d:=8;
+    var e,f;
+    procedure procedure03();
+        begin
+            while a = b do
+                begin
+                a = a - b
+                end;
+            read();
+        end

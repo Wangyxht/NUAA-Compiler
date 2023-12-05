@@ -1,0 +1,5 @@
+< PROGRAM program > < ID ProgramTest > < SPLIT ; > 
+< CONST const > < ID a > < ASSIGN := > < INTEGER 10 > < SPLIT , > < ID b > < ASSIGN := > < INTEGER 20 > < SPLIT , > < ID c > < ASSIGN := > < INTEGER 9 > < SPLIT ; > 
+< VAR var > < ID c > < SPLIT , > < ID d > < SPLIT , > < ID e > < SPLIT ; > 
+< BEGIN begin > 
+< END end > 

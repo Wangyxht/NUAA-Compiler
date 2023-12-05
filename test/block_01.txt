@@ -1,0 +1,4 @@
+    const a:=2, b:=4 c, d := ;
+    var d, e f,;
+
+begin

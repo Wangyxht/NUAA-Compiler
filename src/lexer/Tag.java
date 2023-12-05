@@ -32,7 +32,7 @@ public enum Tag {
      */
     ASSIGN,
     /**
-     * <b>SPLIT -> { | } | [ | ] | ( | ) | , | ; </b>
+     * <b>SPLIT -> ( | ) | , | ; </b>
      */
     SPLIT,
     /**

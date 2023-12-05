@@ -13,7 +13,7 @@ public class Word extends Token {
         this.contend = contend;
     }
 
-    public String getContend() {
+    public String getContent() {
         return contend;
     }
 
@@ -23,5 +23,4 @@ public class Word extends Token {
                 "contend='" + contend + '\'' +
                 '}';
     }
-
 }
