@@ -1,4 +1,4 @@
-package inter;
+package node;
 
 public class While extends Stmt {
     private Expr expression;

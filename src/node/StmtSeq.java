@@ -1,4 +1,4 @@
-package inter;
+package node;
 
 /**
  * 语句序列类

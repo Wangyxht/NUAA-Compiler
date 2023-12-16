@@ -1,4 +1,4 @@
-package inter;
+package node;
 
 public class Procedure extends Stmt{
 
@@ -6,6 +6,7 @@ public class Procedure extends Stmt{
     Stmt block;
     /** 递归过程段 */
     Stmt proc;
+
     public Procedure(Stmt block, Stmt proc) {
         super();
         this.block = block;

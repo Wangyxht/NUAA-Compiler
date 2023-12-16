@@ -1,9 +1,11 @@
 package parser.main;
 
-import inter.*;
+import node.*;
 import lexer.Number;
 import lexer.*;
 import parser.exceptions.*;
+import symbols.ConstInf;
+import symbols.Symbols;
 
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -20,11 +22,26 @@ public class Parser {
      * @see Lexer
      */
     private final Lexer lexer;
+    /**
+     * 当前识别过程栈，用于查询异常表。
+     */
     private final Stack<String> stmt_stack = new Stack<>();
+    /**
+     * 根符号表，用于记录顶层符号表
+     */
+    private final Symbols root_table = new Symbols(null);
     /**
      * 当前词法单元
      */
     private Token token;
+    /**
+     * 前置符号表，用于记录前置分析的符号表
+     */
+    private Symbols prev_table = null;
+    /**
+     * 当前符号表，用于记录当前分析的符号表
+     */
+    private Symbols cur_table = root_table;
 
     Parser(Lexer lexer) {
         this.lexer = lexer;
@@ -40,6 +57,12 @@ public class Parser {
         parser.prog();
     }
 
+    /**
+     * 严格比较，若不匹配则抛出异常提示
+     *
+     * @param str 请求匹配字符串
+     * @throws Exception 不匹配异常
+     */
     private void StrictMatch(String str) throws Exception {
         if (!(token instanceof Word) || !((Word) token).getContent().equals(str)) {
             throw ParserExceptionList.
@@ -47,6 +70,12 @@ public class Parser {
         }
     }
 
+    /**
+     * 严格比较，若不匹配则抛出异常提示
+     *
+     * @param tag 请求匹配类型
+     * @throws Exception 不匹配异常
+     */
     private void StrictMatch(Tag tag) throws Exception {
         if (!token.getTag().equals(tag)) {
             throw ParserExceptionList.
@@ -97,7 +126,6 @@ public class Parser {
             e.PrintExceptionMessage();
         } catch (ParserException e) { // 其他语法异常(恐慌模式)
             e.PrintExceptionMessage();
-
             while (!Match(";") && !Match(Tag.VAR, Tag.CONST, Tag.PROCEDURE)) {
                 ScanToken();
             }
@@ -107,7 +135,6 @@ public class Parser {
             } catch (NoSemicolonException e1) {
                 e1.PrintExceptionMessage();
             }
-
         }
         var x = block();
         stmt_stack.pop();
@@ -121,7 +148,6 @@ public class Parser {
     private Stmt block() throws Exception {
         stmt_stack.add("block");
         Stmt proc_ = null;
-
         while (!Match(Tag.BEGIN)) {
             try {
                 switch (token.getTag()) {
@@ -197,11 +223,23 @@ public class Parser {
     }
 
     private void _const() throws Exception {
+        // 读取常量定义ID
         StrictMatch(Tag.ID);
+        var ID_name = ((Word) token).getContent();
+
+        // 读取:=
         ScanToken();
         StrictMatch(Tag.ASSIGN);
+
+        // 读取数字
         ScanToken();
         StrictMatch(Tag.INTEGER);
+        var ID_val = ((Number) token).getVal();
+
+        // 填入符号表
+        cur_table.putSymbol(ID_name, new ConstInf(ID_val));
+
+        // 扫描分隔符
         ScanToken();
         if (!Match(",", ";") && !Match(Tag.VAR, Tag.BEGIN)) StrictMatch(",");
         if (Match(Tag.VAR, Tag.BEGIN)) StrictMatch(";");
@@ -210,17 +248,27 @@ public class Parser {
     private void vardecl() throws Exception {
         stmt_stack.push("var");
         StrictMatch(Tag.VAR);
+        int variableNum = 0; //该过程变量计数器
         try {
+            // 读取变量定义ID
             ScanToken();
             StrictMatch(Tag.ID);
+            var ID_name = ((Word) token).getContent();
+
+            // 填入符号表
+            cur_table.putSymbol(ID_name, null);
+            variableNum++;
+
+            // 读取分隔符
             ScanToken();
             if (!Match(",", ";") && !Match(Tag.BEGIN)) StrictMatch(",");
             if (Match(Tag.BEGIN)) StrictMatch(";");
-        } catch (NoSemicolonException e) {
+
+        } catch (NoSemicolonException e) { // 缺失分号异常
             while (!Match(Tag.BEGIN)) {
                 ScanToken();
             }
-        } catch (ParserException e) {
+        } catch (ParserException e) { // 其他异常
             e.PrintExceptionMessage();
             while (!Match(",", ";") && !Match(Tag.BEGIN)) {
                 ScanToken();
@@ -229,25 +277,35 @@ public class Parser {
 
         while (Match(",")) {
             try {
+                // 读取变量定义ID
                 ScanToken();
                 StrictMatch(Tag.ID);
+                var ID_name = ((Word) token).getContent();
+                variableNum++;
+
+                // 填入符号表
+                cur_table.putSymbol(ID_name, null);
+
+                // 读取分隔符
                 ScanToken();
                 if (!Match(",", ";")) StrictMatch(",");
 
-            } catch (NoSemicolonException e) {
+            } catch (NoSemicolonException e) { // 缺失逗号异常
                 while (!Match(Tag.BEGIN)) {
                     ScanToken();
                 }
-            } catch (ParserException e) {
+            } catch (ParserException e) { // 其他异常
                 e.PrintExceptionMessage();
                 while (!Match(",", ";") && !Match(Tag.BEGIN)) {
                     ScanToken();
                 }
             }
         }
+
+        // 读取分号
         try {
             StrictMatch(";");
-        } catch (NoSemicolonException e) {
+        } catch (NoSemicolonException e) { // 缺失分号异常
             e.PrintExceptionMessage();
             stmt_stack.pop();
             return;
@@ -271,37 +329,47 @@ public class Parser {
     private Stmt proc() throws Exception {
         stmt_stack.push("proc");
         Stmt x = null;
+
+        // 读取PROCEDURE关键字
         StrictMatch(Tag.PROCEDURE);
         ScanToken();
+
+        // 读取过程名与左括号
         try {
+            // 读取过程名
             if (!Match(Tag.ID)) throw new ProgIDException();
+            var ID_name = ((Word) token).getContent();
             ScanToken();
+
+            // 读取左括号
             StrictMatch("(");
             ScanToken();
-        } catch (ProgIDException e) {
+
+        } catch (ProgIDException e) { // 过程名异常
             e.setError_token(token);
             e.SetLocator();
             e.PrintExceptionMessage();
             while (!Match("(", ",", ")")) {
                 ScanToken();
             }
-
-        } catch (ParserException e) {
+        } catch (ParserException e) { // 其他异常
             e.PrintExceptionMessage();
             while (!Match("(", ",", ")")) {
                 ScanToken();
             }
         }
 
-
+        int paraNum = 0; // 参数计数器
         if (Match(")")) { // 无参声明
             ScanToken();
-        } else if (Match(Tag.ID) || Match(",")) { // 有参声明
-            if (Match(Tag.ID)) ScanToken();
+        }
+        else if (Match(Tag.ID) || Match(",")) { // 有参声明
+            if (Match(Tag.ID)){ ScanToken(); paraNum++;}
             while (Match(",")) {
                 try {
                     ScanToken();
                     StrictMatch(Tag.ID);
+                    paraNum++;
                     ScanToken();
                     if (!Match(")", ",")) throw new InvalidArgsException();
                 } catch (ParserException e) {
@@ -316,6 +384,7 @@ public class Parser {
             }
         }
 
+        // 匹配右括号与结束符号
         try {
             StrictMatch(")");
             ScanToken();
@@ -343,6 +412,7 @@ public class Parser {
             x = new Procedure(proc_block, null);
         }
         stmt_stack.pop();
+
         return x;
 
     }
@@ -361,8 +431,10 @@ public class Parser {
     private Stmt body() throws Exception {
         StrictMatch(Tag.BEGIN);
         ScanToken();
-        return statements();
-
+        var x = statements();
+        StrictMatch(Tag.END);
+        ScanToken();
+        return x;
     }
 
     /**
@@ -372,30 +444,26 @@ public class Parser {
      * @throws Exception
      */
     private Stmt statements() throws Exception {
-        if (Match(Tag.END)) {
-            ScanToken();
-            return null;
-        } else {
-            Stmt stmt = null;
-            try {
-                stmt = statement();
-                if (!Match(Tag.END)) StrictMatch(";");
-            } catch (NoSemicolonException e) { // 缺失引号异常
-                e.PrintExceptionMessage();
-                return new StmtSeq(stmt, statements());
-            } catch (InvalidStatement e) { // 非法语句异常（由statement抛出）
-                e.PrintExceptionMessage();
-                while (!Match(";") && !Match(Tag.END)) {
-                    ScanToken();
-                }
-                if (Match(Tag.END)) {
-                    ScanToken();
-                    return null;
-                }
-            }
-            if (!Match(Tag.END)) ScanToken();
+        if (Match(Tag.END)) return null; // 读取到语句块结尾处返回空
+        Stmt stmt = null;
+        try {
+            stmt = statement();
+            if (!Match(Tag.END)) StrictMatch(";");
+        } catch (NoSemicolonException e) { // 缺失引号异常
+            e.PrintExceptionMessage();
             return new StmtSeq(stmt, statements());
+        } catch (InvalidStatement e) { // 非法语句异常（由statement抛出）
+            e.PrintExceptionMessage();
+            while (!Match(";") && !Match(Tag.END)) {
+                ScanToken();
+            }
+            if (Match(Tag.END)) {
+                ScanToken();
+                return null;
+            }
         }
+        if (!Match(Tag.END)) ScanToken();
+        return new StmtSeq(stmt, statements());
     }
 
     /**
@@ -437,7 +505,7 @@ public class Parser {
                 ScanToken();
                 try {
                     x = new Assign(id, exp());
-                } catch (InvalidExpression e){
+                } catch (InvalidExpression e) {
                     e.PrintExceptionMessage();
                     var e1 = new InvalidStatement();
                     e1.SetLocator();
@@ -507,7 +575,7 @@ public class Parser {
                 var args = new ArrayList<Expr>();
 
                 // 有参函数调用
-                if(!Match(")")){
+                if (!Match(")")) {
                     AddArgs(args);
 
                     while (Match(",")) {
@@ -515,10 +583,10 @@ public class Parser {
                         AddArgs(args);
                     }
                 }
-                try{
+                try {
                     StrictMatch(")");
                     ScanToken();
-                } catch (NoRightParenthesisException e){
+                } catch (NoRightParenthesisException e) {
                     e.PrintExceptionMessage();
                 }
                 x = new Call(id, args);
@@ -528,12 +596,12 @@ public class Parser {
             }
             case READ -> {
                 var ID_list = new ArrayList<Token>();
-                try{
+                try {
                     ScanToken();
                     StrictMatch("(");
-                } catch (NoLeftParenthesisException e){
+                } catch (NoLeftParenthesisException e) {
                     e.PrintExceptionMessage();
-                    while(!Match(Tag.ID)) ScanToken();
+                    while (!Match(Tag.ID)) ScanToken();
                 }
 
                 ScanToken();
@@ -542,21 +610,21 @@ public class Parser {
                     ScanToken();
                     AddIDs(ID_list);
                 }
-                try{
+                try {
                     StrictMatch(")");
                     ScanToken();
-                } catch (NoRightParenthesisException e){
+                } catch (NoRightParenthesisException e) {
                     e.PrintExceptionMessage();
                 }
 
-                try{
-                    if(ID_list.isEmpty()){
+                try {
+                    if (ID_list.isEmpty()) {
                         var e = new ReadIDEmptyException();
                         e.setError_token(token);
                         e.SetLocator();
                         throw e;
                     }
-                } catch (ReadIDEmptyException e){
+                } catch (ReadIDEmptyException e) {
                     e.PrintExceptionMessage();
                 }
 
@@ -565,10 +633,10 @@ public class Parser {
             case WRITE -> {
                 var expressions = new ArrayList<Expr>();
                 ScanToken();
-                try{
+                try {
                     StrictMatch("(");
                     ScanToken();
-                } catch (NoLeftParenthesisException e){
+                } catch (NoLeftParenthesisException e) {
                     e.PrintExceptionMessage();
                 }
 
@@ -578,20 +646,20 @@ public class Parser {
                     AddArgs(expressions);
                 }
 
-                try{
+                try {
                     StrictMatch(")");
                     ScanToken();
                 } catch (NoRightParenthesisException e) {
                     e.PrintExceptionMessage();
                 }
-                try{
-                    if(expressions.isEmpty()){
+                try {
+                    if (expressions.isEmpty()) {
                         var e = new WriteExpEmptyException();
                         e.setError_token(token);
                         e.SetLocator();
                         throw e;
                     }
-                } catch (WriteExpEmptyException e){
+                } catch (WriteExpEmptyException e) {
                     e.PrintExceptionMessage();
                 }
                 x = new Write(expressions);
@@ -610,37 +678,37 @@ public class Parser {
     }
 
     private void AddArgs(ArrayList<Expr> args) throws Exception {
-        try{
+        try {
             args.add(exp());
-        } catch (InvalidExpression e){
+        } catch (InvalidExpression e) {
             e.PrintExceptionMessage();
-            while(!Match(",", ")", ";")){
+            while (!Match(",", ")", ";")) {
                 ScanToken();
             }
         }
-        try{
-            if(!Match(")",";")) StrictMatch(",");
-        } catch (NoCommaException e){
+        try {
+            if (!Match(")", ";")) StrictMatch(",");
+        } catch (NoCommaException e) {
             e.PrintExceptionMessage();
-            while(!Match(",", ")", ";")) ScanToken();
+            while (!Match(",", ")", ";")) ScanToken();
         }
     }
 
-    private void AddIDs(ArrayList<Token> ID_list) throws Exception{
-        if(Match(")")) return;
+    private void AddIDs(ArrayList<Token> ID_list) throws Exception {
+        if (Match(")")) return;
         stmt_stack.push("read");
-        try{
+        try {
             StrictMatch(Tag.ID);
             ID_list.add(token);
             ScanToken();
-        } catch (ReadIDException e){
+        } catch (ReadIDException e) {
             e.PrintExceptionMessage();
             ID_list.add(null);
             while (!Match(",", ")", ";")) ScanToken();
         }
         stmt_stack.pop();
-        try{
-            if(!Match(")", ";")) StrictMatch(",");
+        try {
+            if (!Match(")", ";")) StrictMatch(",");
         } catch (NoCommaException e) {
             e.PrintExceptionMessage();
             while (!Match(",", ")", ";")) ScanToken();
@@ -813,7 +881,8 @@ public class Parser {
                         e_ret.SetLocator();
                         throw e_ret;
                     }
-                } else {
+                }
+                else {
                     ParserException e = new InvalidExpression();
                     e.setError_token(token);
                     e.SetLocator();

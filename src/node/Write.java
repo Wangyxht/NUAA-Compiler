@@ -1,4 +1,4 @@
-package inter;
+package node;
 
 import java.util.ArrayList;
 

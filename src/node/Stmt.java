@@ -1,4 +1,4 @@
-package inter;
+package node;
 
 public class Stmt extends Node {
 

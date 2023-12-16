@@ -1,4 +1,4 @@
-package inter;
+package node;
 
 public class If_with_Else extends If {
 
