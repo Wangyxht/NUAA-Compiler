@@ -9,4 +9,7 @@ public class ConstInf extends SymbolInf {
         this.val = val;
     }
 
+    public int getVal() {
+        return val;
+    }
 }

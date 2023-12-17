@@ -7,7 +7,7 @@ package symbols;
 public abstract class SymbolInf {
 
     /** 符号表项类型 */
-    IDType type;
+    public IDType type;
 
     public SymbolInf(IDType type) {
         this.type = type;

@@ -1,11 +1,12 @@
 package parser.main;
 
+import interpreter.Interpreter;
+import pCode.*;
 import node.*;
 import lexer.Number;
 import lexer.*;
 import parser.exceptions.*;
-import symbols.ConstInf;
-import symbols.Symbols;
+import symbols.*;
 
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -18,22 +19,23 @@ public class Parser {
 
     /**
      * 词法分析器
-     *
      * @see Lexer
      */
     private final Lexer lexer;
     /**
+     * 代码解释器
+     * @see Interpreter
+     */
+    private final Interpreter interpreter = new Interpreter();
+    /**
      * 当前识别过程栈，用于查询异常表。
+     * @see ParserException
      */
     private final Stack<String> stmt_stack = new Stack<>();
     /**
      * 根符号表，用于记录顶层符号表
      */
     private final Symbols root_table = new Symbols(null);
-    /**
-     * 当前词法单元
-     */
-    private Token token;
     /**
      * 前置符号表，用于记录前置分析的符号表
      */
@@ -42,6 +44,14 @@ public class Parser {
      * 当前符号表，用于记录当前分析的符号表
      */
     private Symbols cur_table = root_table;
+    /**
+     * 当前词法单元
+     */
+    private Token token;
+    /**
+     * 代码区，用于存放生成的pCode代码序列
+     */
+    private pCodeArea codeArea = new pCodeArea();
 
     Parser(Lexer lexer) {
         this.lexer = lexer;
@@ -55,6 +65,8 @@ public class Parser {
         Lexer lexer_test = new Lexer(fileDir, false);
         Parser parser = new Parser(lexer_test);
         parser.prog();
+        parser.codeArea.displayCode();
+        return;
     }
 
     /**
@@ -104,15 +116,16 @@ public class Parser {
     private void ScanToken() {
         try {
             token = lexer.AnalyseToken();
-            if (token.getTag().equals(Tag.EOF)) {
-                System.exit(1);
-            }
+//            if (token.getTag().equals(Tag.EOF)) {
+//                System.exit(1);
+//            }
         } catch (Exception e) {
             System.out.println((char) 27 + "[31m" + e.getMessage() + (char) 27 + "[0m");
         }
     }
 
     private Stmt prog() throws Exception {
+        int depth = 1;// 嵌套深度，初始值为1
         try {
             stmt_stack.add("prog");
             StrictMatch(Tag.PROGRAM);
@@ -136,7 +149,9 @@ public class Parser {
                 e1.PrintExceptionMessage();
             }
         }
-        var x = block();
+        // 生成跳转到主程序代码
+        codeArea.generateCode(pCodeType.JMP, null, null);
+        var x = block(depth, 0);
         stmt_stack.pop();
         return x;
     }
@@ -145,15 +160,19 @@ public class Parser {
      * @return
      * @throws
      */
-    private Stmt block() throws Exception {
+    private Stmt block(int depth, int paraNum) throws Exception {
         stmt_stack.add("block");
+        // 变量计数器
+        int varNum = 0;
+        // 过程
         Stmt proc_ = null;
+
         while (!Match(Tag.BEGIN)) {
             try {
                 switch (token.getTag()) {
                     case CONST -> condecl();
-                    case VAR -> vardecl();
-                    case PROCEDURE -> proc_ = proc();
+                    case VAR -> varNum = vardecl(depth);
+                    case PROCEDURE -> proc_ = proc(depth);
                     default -> throw new BlockStartException();
                 }
             } catch (BlockStartException e) {
@@ -166,17 +185,13 @@ public class Parser {
                 ScanToken();
             }
         }
+        // 如果分析的是主程序，回填主程序地址
+        if(cur_table == root_table) codeArea.backPatch(0, codeArea.getNextCodeAddr());
 
-        try {
-            StrictMatch(Tag.BEGIN);
-            ScanToken();
-        } catch (NoBeginException e) {
-            e.PrintExceptionMessage();
-        }
-
-        var stmts_ = statements();
+        // 分析语句块
+        var body_ = body(depth, paraNum + varNum);
         stmt_stack.pop();
-        return new Block(proc_, stmts_);
+        return new Block(varNum, proc_, body_);
     }
 
     private void condecl() throws Exception {
@@ -245,10 +260,10 @@ public class Parser {
         if (Match(Tag.VAR, Tag.BEGIN)) StrictMatch(";");
     }
 
-    private void vardecl() throws Exception {
+    private int vardecl(int depth) throws Exception {
         stmt_stack.push("var");
         StrictMatch(Tag.VAR);
-        int variableNum = 0; //该过程变量计数器
+        int variableNum = 0; //过程变量计数器
         try {
             // 读取变量定义ID
             ScanToken();
@@ -256,7 +271,7 @@ public class Parser {
             var ID_name = ((Word) token).getContent();
 
             // 填入符号表
-            cur_table.putSymbol(ID_name, null);
+            cur_table.putSymbol(ID_name, new VariableInf(depth, variableNum));
             variableNum++;
 
             // 读取分隔符
@@ -281,11 +296,9 @@ public class Parser {
                 ScanToken();
                 StrictMatch(Tag.ID);
                 var ID_name = ((Word) token).getContent();
-                variableNum++;
-
                 // 填入符号表
-                cur_table.putSymbol(ID_name, null);
-
+                cur_table.putSymbol(ID_name, new VariableInf(depth, variableNum));
+                variableNum++;
                 // 读取分隔符
                 ScanToken();
                 if (!Match(",", ";")) StrictMatch(",");
@@ -308,11 +321,12 @@ public class Parser {
         } catch (NoSemicolonException e) { // 缺失分号异常
             e.PrintExceptionMessage();
             stmt_stack.pop();
-            return;
+            return variableNum;
         }
 
         ScanToken();
         stmt_stack.pop();
+        return variableNum;
     }
 
     /**
@@ -326,7 +340,7 @@ public class Parser {
      * @return Stmt 过程 proc
      * @throws Exception
      */
-    private Stmt proc() throws Exception {
+    private Stmt proc(int depth) throws Exception {
         stmt_stack.push("proc");
         Stmt x = null;
 
@@ -335,10 +349,11 @@ public class Parser {
         ScanToken();
 
         // 读取过程名与左括号
+        String ID_name = null;
         try {
             // 读取过程名
             if (!Match(Tag.ID)) throw new ProgIDException();
-            var ID_name = ((Word) token).getContent();
+            ID_name = ((Word) token).getContent();
             ScanToken();
 
             // 读取左括号
@@ -359,16 +374,15 @@ public class Parser {
             }
         }
 
+        // 读取过程的参数
         int paraNum = 0; // 参数计数器
-        if (Match(")")) { // 无参声明
-            ScanToken();
-        }
-        else if (Match(Tag.ID) || Match(",")) { // 有参声明
+        if ((Match(Tag.ID) || Match(",")) && !Match(")")) { // 有参声明
             if (Match(Tag.ID)){ ScanToken(); paraNum++;}
             while (Match(",")) {
                 try {
                     ScanToken();
                     StrictMatch(Tag.ID);
+                    var paraName = ((Word)token).getContent();
                     paraNum++;
                     ScanToken();
                     if (!Match(")", ",")) throw new InvalidArgsException();
@@ -399,22 +413,43 @@ public class Parser {
             }
             ScanToken();
         }
+        // 记录过程名以及相关数据到表项
+        cur_table.putSymbol(ID_name,
+                new ProcedureInf(depth, codeArea.getNextCodeAddr(), -1));
+        codeArea.generateCode(pCodeType.INT, null, null);
 
+        // 新建符号表
+        prev_table = cur_table;
+        cur_table = new Symbols(prev_table);
 
-        var proc_block = block();
+        // 读取语句块, 生成过程代码
+        Block proc_block = (Block) block(depth + 1, paraNum);
+        int procSize = proc_block.varNum + paraNum;
+
+        // 返回上级表项
+        cur_table = prev_table;
+        prev_table = cur_table.getPrev();
+
+        // 填入符号表
+        cur_table.setProcedureSize(ID_name, procSize);
+        // 回填空间增量到LIT
+        codeArea.backPatch(
+                cur_table.getProcedure(ID_name).getAddr(),
+                cur_table.getProcedure(ID_name).getSize());
+
 
         if (Match(";")) {
-            while (Match(";")) {
-                x = new Procedure(proc_block, proc());
+            while (Match(";")) { // 并列过程
+                // 生成过程序列、符号表以及代码
                 ScanToken();
+                var nextProc = proc(depth);
+                x = new Procedure(procSize, proc_block, nextProc);
             }
-        } else {
-            x = new Procedure(proc_block, null);
+        } else { // 过程无嵌套
+            x = new Procedure(procSize ,proc_block, null);
         }
         stmt_stack.pop();
-
         return x;
-
     }
 
     /**
@@ -428,10 +463,10 @@ public class Parser {
      * @return Stmt 过程主体 body
      * @throws Exception
      */
-    private Stmt body() throws Exception {
+    private Stmt body(int depth, int procBasicSize) throws Exception {
         StrictMatch(Tag.BEGIN);
         ScanToken();
-        var x = statements();
+        var x = statements(depth, procBasicSize);
         StrictMatch(Tag.END);
         ScanToken();
         return x;
@@ -443,15 +478,15 @@ public class Parser {
      * @return StmtSeq 语句序列 statements
      * @throws Exception
      */
-    private Stmt statements() throws Exception {
+    private Stmt statements(int depth, int procBasicSize) throws Exception {
         if (Match(Tag.END)) return null; // 读取到语句块结尾处返回空
         Stmt stmt = null;
         try {
-            stmt = statement();
+            stmt = statement(depth, procBasicSize);
             if (!Match(Tag.END)) StrictMatch(";");
         } catch (NoSemicolonException e) { // 缺失引号异常
             e.PrintExceptionMessage();
-            return new StmtSeq(stmt, statements());
+            return new StmtSeq(stmt, statements(depth, procBasicSize));
         } catch (InvalidStatement e) { // 非法语句异常（由statement抛出）
             e.PrintExceptionMessage();
             while (!Match(";") && !Match(Tag.END)) {
@@ -463,7 +498,7 @@ public class Parser {
             }
         }
         if (!Match(Tag.END)) ScanToken();
-        return new StmtSeq(stmt, statements());
+        return new StmtSeq(stmt, statements(depth, procBasicSize));
     }
 
     /**
@@ -485,13 +520,14 @@ public class Parser {
      * @return Stmt 完整语句statement
      * @throws Exception
      */
-    private Stmt statement() throws Exception {
+    private Stmt statement(int depth, int procBasicSize) throws Exception {
         stmt_stack.push("statement");
-        Stmt x = null;
+        Stmt x;
 
         switch (token.getTag()) {
             case ID -> {
                 var id = token;
+                var ID_name = ((Word) token).getContent();
                 ScanToken();
                 try {
                     StrictMatch(Tag.ASSIGN);
@@ -504,7 +540,7 @@ public class Parser {
                 }
                 ScanToken();
                 try {
-                    x = new Assign(id, exp());
+                    x = new Assign(id, exp(depth, procBasicSize));
                 } catch (InvalidExpression e) {
                     e.PrintExceptionMessage();
                     var e1 = new InvalidStatement();
@@ -516,14 +552,14 @@ public class Parser {
             }
             case IF -> {
                 ScanToken();
-                var expression = lexp();
+                var expression = lexp(depth, procBasicSize);
                 try {
                     StrictMatch(Tag.THEN);
                     ScanToken();
                 } catch (NoThenException e) {
                     e.PrintExceptionMessage();
                 }
-                var stmt_if = statement();
+                var stmt_if = statement(depth, procBasicSize);
                 try {
                     StrictMatch(";");
                     ScanToken();
@@ -532,21 +568,21 @@ public class Parser {
                 }
                 if (Match(Tag.ELSE)) {
                     ScanToken();
-                    x = new If_with_Else(expression, stmt_if, statement());
+                    x = new If_with_Else(expression, stmt_if, statement(depth, procBasicSize));
                 } else {
                     x = new If(expression, stmt_if);
                 }
             }
             case WHILE -> {
                 ScanToken();
-                var expression = lexp();
+                var expression = lexp(depth, procBasicSize);
                 try {
                     StrictMatch(Tag.DO);
                     ScanToken();
                 } catch (NoDoException e) {
                     e.PrintExceptionMessage();
                 }
-                x = new While(expression, statement());
+                x = new While(expression, statement(depth, procBasicSize));
             }
             case CALL -> {
                 stmt_stack.push("call");
@@ -576,11 +612,11 @@ public class Parser {
 
                 // 有参函数调用
                 if (!Match(")")) {
-                    AddArgs(args);
+                    AddArgs(args, depth, procBasicSize);
 
                     while (Match(",")) {
                         ScanToken();
-                        AddArgs(args);
+                        AddArgs(args, depth, procBasicSize);
                     }
                 }
                 try {
@@ -592,7 +628,7 @@ public class Parser {
                 x = new Call(id, args);
             }
             case BEGIN -> {
-                x = body();
+                x = body(depth, procBasicSize);
             }
             case READ -> {
                 var ID_list = new ArrayList<Token>();
@@ -640,10 +676,10 @@ public class Parser {
                     e.PrintExceptionMessage();
                 }
 
-                AddArgs(expressions);
+                AddArgs(expressions, depth, procBasicSize);
                 while (Match(",")) {
                     ScanToken();
-                    AddArgs(expressions);
+                    AddArgs(expressions, depth, procBasicSize);
                 }
 
                 try {
@@ -677,9 +713,9 @@ public class Parser {
         return x;
     }
 
-    private void AddArgs(ArrayList<Expr> args) throws Exception {
+    private void AddArgs(ArrayList<Expr> args, int depth, int procBasicSize) throws Exception {
         try {
-            args.add(exp());
+            args.add(exp(depth, procBasicSize));
         } catch (InvalidExpression e) {
             e.PrintExceptionMessage();
             while (!Match(",", ")", ";")) {
@@ -728,17 +764,17 @@ public class Parser {
      * @return Expr 逻辑表达式lexp
      * @throws Exception
      */
-    private Expr lexp() throws Exception {
+    private Expr lexp(int depth, int procBasicSize) throws Exception {
         stmt_stack.push("lexp");
-        Expr x = null;
-        Expr expression_left = null;
-        Expr expression_right = null;
+        Expr x;
+        Expr expression_left;
+        Expr expression_right;
         try {
             if (Match(Tag.ODD)) {
                 var op = token;
                 ScanToken();
                 try {
-                    x = new Unary(op, exp());
+                    x = new Unary(op, exp(depth, procBasicSize));
                 } catch (InvalidExpression e) {
                     stmt_stack.pop();
                     e.PrintExceptionMessage();
@@ -749,7 +785,7 @@ public class Parser {
                 }
             } else {
                 try {
-                    expression_left = exp();
+                    expression_left = exp(depth, procBasicSize);
                 } catch (InvalidExpression e) {
                     stmt_stack.pop();
                     e.PrintExceptionMessage();
@@ -762,7 +798,7 @@ public class Parser {
                 var op = token;
                 ScanToken();
                 try {
-                    expression_right = exp();
+                    expression_right = exp(depth, procBasicSize);
                 } catch (InvalidExpression e) {
                     stmt_stack.pop();
                     var e1 = new InvalidLogicalExpr();
@@ -803,23 +839,31 @@ public class Parser {
      * @return Expr 逻辑表达式exp
      * @throws Exception
      */
-    private Expr exp() throws Exception {
+    private Expr exp(int depth, int procBasicSize) throws Exception {
         stmt_stack.push("expression");
         Expr x;
         Token tk;
         if (Match("-") || Match("+")) {
             tk = token;
             ScanToken();
+            x = new Unary(tk, term(depth, procBasicSize));
+            if (((Word) tk).getContent().equals("-")){
+                codeArea.generateCode(pCodeType.LIT, null, 0);
+                codeArea.generateCode(pCodeType.OPR, null, OpCode.MINUS.ordinal());
+            }
         } else {
-            tk = new Word(null, Tag.AOP);
+            x = new Unary(null, term(depth, procBasicSize));
         }
-
-        x = new Unary(tk, term());
 
         while (Match(Tag.AOP)) {
             tk = token;
             ScanToken();
-            x = new Arith(tk, x, term());
+            x = new Arith(tk, x, term(depth, procBasicSize));
+            if(((Word) tk).getContent().equals("-")){
+                codeArea.generateCode(pCodeType.OPR, null, OpCode.MINUS.ordinal());
+            } else {
+                codeArea.generateCode(pCodeType.OPR, null, OpCode.PLUS.ordinal());
+            }
         }
         stmt_stack.pop();
         return x;
@@ -837,13 +881,18 @@ public class Parser {
      * @return Expr 表达式term
      * @throws Exception
      */
-    private Expr term() throws Exception {
-        Expr x = factor();
-
+    private Expr term(int depth, int procBasicSize) throws Exception {
+        Expr x = factor(depth, procBasicSize);
         while (Match(Tag.MOP)) {
             var tk = token;
             ScanToken();
-            x = new Arith(tk, x, factor());
+            x = new Arith(tk, x, factor(depth, procBasicSize));
+            if(((Word) tk).getContent().equals("*")){
+                codeArea.generateCode(pCodeType.OPR, null, OpCode.MUTI.ordinal());
+            } else {
+                codeArea.generateCode(pCodeType.OPR, null, OpCode.DIV.ordinal());
+            }
+
         }
         return x;
     }
@@ -862,19 +911,39 @@ public class Parser {
      * @return Expr 因子factor
      * @throws Exception
      */
-    private Expr factor() throws Exception {
+    private Expr factor(int depth, int procBasicSize) throws Exception {
         Expr x;
-
         switch (token.getTag()) {
-            case ID -> x = new Expr(token);
-            case INTEGER -> x = new Constant((Number) token);
-            case SPLIT -> {
+            case ID ->{
+                x = new Expr(token);
+                var ID_name = ((Word) token).getContent();
+                var symbol = cur_table.getSymbol(ID_name);
+                if(symbol == null || symbol instanceof ProcedureInf){
+                       // TODO : 未定义的标识符
+                }
+
+                // 生成pCode代码
+                if(symbol instanceof VariableInf variable) {
+                    codeArea.generateCode(pCodeType.LOD,
+                            depth - variable.getDepth(),
+                            variable.getAddr() + procBasicSize);
+                } else if(symbol instanceof ConstInf constVal) {
+                    codeArea.generateCode(pCodeType.LIT, null, constVal.getVal());
+                }
+
+            }
+            case INTEGER -> {
+                x = new Constant((Number) token);
+                // 生成pCode代码
+                codeArea.generateCode(pCodeType.LIT, null, ((Constant) x).val);
+            }
+            case SPLIT -> { // (<exp>)
                 if (Match("(")) {
                     try {
                         ScanToken();
-                        x = exp();
+                        x = exp(depth, procBasicSize);
                         StrictMatch(")");
-                    } catch (NoRightParenthesisException e) {
+                    } catch (NoRightParenthesisException e) { // 缺失右括号异常
                         e.PrintExceptionMessage();
                         var e_ret = new InvalidExpression();
                         e_ret.setError_token(token);
@@ -888,7 +957,6 @@ public class Parser {
                     e.SetLocator();
                     throw e;
                 }
-
             }
             default -> {
                 ParserException e = new InvalidExpression();
