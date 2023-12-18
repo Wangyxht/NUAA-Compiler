@@ -4,10 +4,12 @@ import interpreter.Interpreter;
 import java.util.HashMap;
 
 public class Symbols {
-    /** 单个符号表 */
+    /** 符号表,用哈希表抽象表示 */
     HashMap<String, SymbolInf> table = new HashMap<>();
     /** 前置符号表 */
     Symbols prev;
+    /** 下一个插入数据相对于基地址位置 */
+    int variableAddr = 4;
 
     public Symbols(Symbols prev) {
         this.prev = prev;
@@ -18,7 +20,7 @@ public class Symbols {
         while(cur_table != null){
             SymbolInf symbol = cur_table.table.get(symbol_name);
             if(symbol != null) return symbol;
-            cur_table = prev;
+            cur_table = cur_table.prev;
         }
         return null;
     }
@@ -39,14 +41,24 @@ public class Symbols {
     }
 
     public void putSymbol(String symbol_name, SymbolInf symbol){
+        if(symbol instanceof VariableInf variableInf){
+            variableInf.addr = variableAddr ++;
+        }
         table.put(symbol_name, symbol);
     }
 
     public void setProcedureSize(String symbol_name, int size){
-        if(table.get(symbol_name) != null){
+        if(getProcedure(symbol_name) != null){
             var procedureInf = table.get(symbol_name);
             if(!(procedureInf instanceof ProcedureInf)) return;
             ((ProcedureInf) procedureInf).size = size + ProcedureInf.basicSize;
+        }
+    }
+
+    public void setProcedureAddr(String symbol_name, int addr){
+        var procedureInf = getProcedure(symbol_name);
+        if(procedureInf != null){
+            procedureInf.addr = addr;
         }
     }
 

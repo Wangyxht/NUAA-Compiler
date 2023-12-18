@@ -14,6 +14,7 @@ public class VariableInf extends SymbolInf {
 
     public VariableInf(int depth){
         super(IDType.VAR_ID);
+        this.depth = depth;
     }
 
     public int getDepth() {

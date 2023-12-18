@@ -5,9 +5,20 @@ public enum OpCode {
     MINUS,
     MUTI,
     DIV,
+    OPPOSITE,
+    ODD,
     EQ,
+    NEQ,
     LT,
     GT,
     LE,
-    GE;
+    GE,
+    NEWLINE;
+
+    static public OpCode getOp(int index){
+        for(var opcode : OpCode.values()){
+            if(opcode.ordinal() == index) return opcode;
+        }
+        return null;
+    }
 }

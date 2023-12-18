@@ -2,7 +2,7 @@ package node;
 
 import lexer.Token;
 
-public final class Arith extends Expr{
+public class Arith extends Expr{
 
     private Expr expression_l;
     private Expr expression_r;

@@ -7,13 +7,13 @@ import java.util.ArrayList;
  */
 public class ControlStack {
 
-    /** 运行时刻栈，用ArrayList抽象表示*/
-    ArrayList<Integer> stack = new ArrayList<>();
+
     /** 全局display表，最大嵌套深度限制100层 */
     ArrayList<Integer> display = new ArrayList<>(100);
 
 
-    public ControlStack() {}
+    public ControlStack(int stackSize) {
+    }
 
     /**
      * ControlStack内部类

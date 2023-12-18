@@ -9,7 +9,7 @@ public class ProcedureInf extends SymbolInf {
     /** 过程分配空间大小 **/
     int size;
     /** 活动记录基础空间（不包括形式单元与局部变量与运算栈）*/
-    static final int basicSize = 3;
+    static public final int basicSize = 3;
 
     public ProcedureInf(int depth, int addr, int size) {
         super(IDType.PROC_ID);

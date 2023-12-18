@@ -6,7 +6,7 @@ public class pCodeArea {
     /**
      * 静态代码区，储存类pCode代码
      */
-    public ArrayList<pCode> codes = new ArrayList<>();
+    ArrayList<pCode> codes = new ArrayList<>();
 
     /**
      * 无参构造函数
@@ -50,9 +50,18 @@ public class pCodeArea {
     }
 
     public void displayCode(){
+        int line = 0;
         for(var code : codes){
-            System.out.format("%-5s"+"\t"+"%-5d"+"\t"+"%-5d\r\n"
-                    ,code.codeType, code.L, code.a);
+            System.out.format("%-4d"+"\t"+"%-5s"+"\t"+"%-5d"+"\t"+"%-5d\r\n",
+                    line++, code.codeType, code.L, code.a);
         }
+    }
+
+    public pCode getPcode(int addr){
+        return codes.get(addr);
+    }
+
+    public int codeAreaSize(){
+        return codes.size();
     }
 }
