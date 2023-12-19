@@ -18,5 +18,5 @@ program fibonacciTest;
     begin
         fibn := 0;
         call fibonacci(10);
-        write(fibn);
+        write(fibn)
     end

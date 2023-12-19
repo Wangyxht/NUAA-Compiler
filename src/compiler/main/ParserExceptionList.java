@@ -49,6 +49,10 @@ public class ParserExceptionList {
         statementStrList.put(",", new NoCommaException());
         exception_str_list.put("statement", statementStrList);
 
+        HashMap<String, ParserException> statementstStrList = new HashMap<>();
+        statementstStrList.put(";", new NoSemicolonException());
+        exception_str_list.put("statements", statementstStrList);
+
         HashMap<String, ParserException> expStrList = new HashMap<>();
         expStrList.put("(", new NoLeftParenthesisException());
         expStrList.put(")", new NoRightParenthesisException());

@@ -1,9 +1,0 @@
-begin
-    a := 3 + ( 5 * 6 + 12);
-    if a <> b then  call function(a, b);
-    if a = b then a := 8 else a := 1;
-    while a > b do c := a * b;
-    call fun(c, d, e);
-    read(a, b ,c);
-    write(a, b, c);
-end

@@ -59,7 +59,7 @@ public class PL0_Compiler {
 //        System.out.print("请输入待编译文件的文件路径：");
 //        String filePath = scanner.nextLine();
         PL0_Compiler PL0Compiler = new PL0_Compiler();
-        PL0Compiler.executePL0code("test/correct_test/Fibonacci.pas");
+        PL0Compiler.executePL0code("test/correct_test/ProgTest.pas");
         return;
     }
 
@@ -69,9 +69,11 @@ public class PL0_Compiler {
      * @throws Exception IO异常、未处理的匹配异常
      */
     public void compileCode(String codePath) throws Exception {
+        ParserException.exceptions_num = 0;
+        SymbolsException.exceptions_num = 0;
         lexer = new Lexer(codePath, false);
         this.prog();
-        codeArea.displayCode();
+
     }
 
     /**
@@ -86,6 +88,8 @@ public class PL0_Compiler {
      * 执行Pcode代码，调用解释器输出代码运行结果与行为
      */
     private void executePcode(){
+        if(ParserException.exceptions_num != 0 || SymbolsException.exceptions_num != 0) return;
+        codeArea.displayCode();
         interpreter  = new Interpreter(codeArea);
         interpreter.executeCodes();
     }
@@ -525,7 +529,7 @@ public class PL0_Compiler {
         prev_table.putSymbol(procedureName,
                 new ProcedureInf(depth, -1, -1));
         Block proc_block = (Block) block(depth + 1, paraNum, procedureName);
-        // 计算程序栈空间
+        // 计算程序栈空间，获取程序入口
         int procSize = proc_block.varNum + paraNum;
         int procEntry = proc_block.bodyEntry;
         // 返回上级表项
@@ -1103,21 +1107,20 @@ public class PL0_Compiler {
         switch (token.getTag()) {
             case ID ->{
                 x = new Expr(token);
-                var ID_name = ((Word) token).getContent();
-                var symbol = cur_table.getSymbol(ID_name);
-                if(symbol == null || symbol instanceof ProcedureInf){
-                       // TODO : 未定义的标识符
+                try{
+                    var symbolName = ((Word) token).getContent();
+                    var symbol = cur_table.getSymbol(symbolName);
+                    // 生成pCode代码
+                    if(symbol instanceof VariableInf variable) {
+                        generateCode(pCodeType.LOD,
+                                depth - variable.getDepth(),
+                                variable.getAddr());
+                    } else if(symbol instanceof ConstInf constVal) {
+                        generateCode(pCodeType.LIT, null, constVal.getVal());
+                    }
+                } catch (SymbolsNotDeclareException e){ // 变量未定义
+                    e.PrintExceptionMessage();
                 }
-
-                // 生成pCode代码
-                if(symbol instanceof VariableInf variable) {
-                    generateCode(pCodeType.LOD,
-                            depth - variable.getDepth(),
-                            variable.getAddr());
-                } else if(symbol instanceof ConstInf constVal) {
-                    generateCode(pCodeType.LIT, null, constVal.getVal());
-                }
-
             }
             case INTEGER -> {
                 x = new Constant((Number) token);

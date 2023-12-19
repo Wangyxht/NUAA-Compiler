@@ -80,16 +80,15 @@ public class Interpreter {
             }
             case CAL -> {
                 // 设置返回地址
-                 controlStack[top + 1] = pc;
+                controlStack[top + 1] = pc;
                 // 设置动态链（保存sp）
                 controlStack[top + 2] = sp;
                 // 设置静态链
-                if(pcode.L.equals(0)){ // 如果调用者和被调用者层次差为0
-                    controlStack[top + 3] = controlStack[sp + 2];
+                if(pcode.L.equals(0)){ // 如果调用者和被调用者层次差为0，该peocedure的直接外层即为调用者
+                    controlStack[top + 3] = sp;
 
-                } else {
-                    int index = searchAccessLink(pcode.L, 3);
-                    controlStack[top + 3] = controlStack[index];
+                } else { // 否则按照静态链查询外层
+                    controlStack[top + 3] = searchAccessLink(pcode.L, 1);
                 }
                 pc = pcode.a;
                 sp = top + 1;
@@ -106,10 +105,10 @@ public class Interpreter {
             }
             case PARAM -> {
                  controlStack[top + pcode.a] = controlStack[top];
-                 top -- ;
+                 top --;
             }
             case WRT -> {
-                System.out.print(controlStack[top]);
+                System.out.print(controlStack[top--]);
             }
             case OPR -> {
                 operate(pcode.a);
@@ -141,20 +140,22 @@ public class Interpreter {
         var pCodeType = OpCode.getOp(operator);
         int num_lower = controlStack[top - 1];
         int num_upper = controlStack[top];
-        switch (pCodeType){
-            case PLUS -> controlStack[-- top] = num_lower + num_upper;
-            case MINUS -> controlStack[-- top] = num_lower - num_upper;
-            case MUTI -> controlStack[-- top] = num_lower * num_upper;
-            case DIV -> controlStack[-- top] = num_lower / num_upper;
-            case OPPOSITE -> controlStack[top] = - num_upper;
-            case ODD -> controlStack[top] = num_upper % 2;
-            case EQ -> controlStack[-- top] = num_lower == num_upper ? 1 : 0;
-            case NEQ -> controlStack[-- top] = num_lower != num_upper ? 1 : 0;
-            case GT -> controlStack[-- top] = num_lower > num_upper ? 1 : 0;
-            case GE -> controlStack[-- top] = num_lower >= num_upper ? 1 : 0;
-            case LT -> controlStack[-- top] = num_lower < num_upper ? 1 : 0;
-            case LE -> controlStack[-- top] = num_lower <= num_upper ? 1 : 0;
-            case NEWLINE -> System.out.print("\r\n");
+        if (pCodeType != null) {
+            switch (pCodeType){
+                case PLUS -> controlStack[-- top] = num_lower + num_upper;
+                case MINUS -> controlStack[-- top] = num_lower - num_upper;
+                case MUTI -> controlStack[-- top] = num_lower * num_upper;
+                case DIV -> controlStack[-- top] = num_lower / num_upper;
+                case OPPOSITE -> controlStack[top] = - num_upper;
+                case ODD -> controlStack[top] = num_upper % 2;
+                case EQ -> controlStack[-- top] = num_lower == num_upper ? 1 : 0;
+                case NEQ -> controlStack[-- top] = num_lower != num_upper ? 1 : 0;
+                case GT -> controlStack[-- top] = num_lower > num_upper ? 1 : 0;
+                case GE -> controlStack[-- top] = num_lower >= num_upper ? 1 : 0;
+                case LT -> controlStack[-- top] = num_lower < num_upper ? 1 : 0;
+                case LE -> controlStack[-- top] = num_lower <= num_upper ? 1 : 0;
+                case NEWLINE -> System.out.print("\r\n");
+            }
         }
     }
 }

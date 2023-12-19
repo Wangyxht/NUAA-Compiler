@@ -12,7 +12,7 @@ import lexer.Word;
 public abstract class ParserException extends Exception{
 
     /** 异常个数 */
-    static private int exceptions_num = 0;
+    static public int exceptions_num = 0;
     /** 异常所在行数 */
     protected long line;
     /** 异常所在列数 */
