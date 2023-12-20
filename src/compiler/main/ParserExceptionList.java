@@ -1,6 +1,6 @@
 package compiler.main;
 
-import compiler.exceptions.parserExceptions.*;
+import compiler.exceptions.*;
 import lexer.Tag;
 import lexer.Token;
 

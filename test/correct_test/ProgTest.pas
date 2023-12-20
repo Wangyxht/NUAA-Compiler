@@ -53,6 +53,7 @@ program progTest;
         write(sum);
         call isEvenNum(sum)
     end
+
     begin
         read(inputa, inputb, inputc);
         call equationHasAnswer(inputa, inputb, inputc);

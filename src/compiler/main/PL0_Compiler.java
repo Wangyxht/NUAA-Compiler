@@ -1,6 +1,6 @@
 package compiler.main;
 
-import compiler.exceptions.parserExceptions.*;
+import compiler.exceptions.*;
 import interpreter.Interpreter;
 import pCode.*;
 import node.*;
@@ -147,7 +147,7 @@ public class PL0_Compiler {
 
     private void ScanToken() {
         try {
-            token = lexer.AnalyseToken();
+            token = lexer.analyseToken();
 //            if (token.getTag().equals(Tag.EOF)) {
 //                System.exit(1);
 //            }

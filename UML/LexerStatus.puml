@@ -1,0 +1,33 @@
+@startuml
+'https://plantuml.com/state-diagram
+
+scale 1000 width
+state 2: ID or KeyWords
+state 3: Tag.Integer
+state 5: :=
+state 6: >
+state 7: >=
+state 8: <
+state 9: <=
+state 10: =
+state 11: Tag.SPLITE
+state 12: <>
+[*] -> 0 : readChar()
+0 -> 0 : isWhiteSpace
+0 -> 1 : isUpperCase() || isLowerCase()
+1 -> 2 : isUpperCase() || isLowerCase() || isDigit()
+2 -> 2 : isUpperCase() || isLowerCase() || isDigit()
+0 --> 3 : isDigit()
+3 --> 3 : isDigit()
+0 --> 4 : :
+4 -> 5 : =
+4 -> ERROR : ELSE
+0 --> 6 : >
+6 -> 7 :=
+0 --> 8 : <
+8 --> 12 : >
+8 --> 9 : =
+0 --> 10: =
+0 --> 11:  ,  (  )  ;
+0 ---> ERROR: ELSE
+@enduml

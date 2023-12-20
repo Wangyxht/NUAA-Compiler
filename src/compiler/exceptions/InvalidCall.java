@@ -1,4 +1,4 @@
-package compiler.exceptions.parserExceptions;
+package compiler.exceptions;
 
 public final class InvalidCall extends ParserException{
     public InvalidCall() {

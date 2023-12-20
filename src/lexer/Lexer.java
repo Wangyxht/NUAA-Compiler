@@ -62,7 +62,7 @@ public class Lexer {
      * 关键字哈希表
      */
     private static final Hashtable<String, Word>
-            reserve_words = InitReserveWords();
+            reserve_words = initReserveWords();
 
     /**
      * 词法分析器类构造函数
@@ -73,7 +73,7 @@ public class Lexer {
         try {
             var codeFileInput = new FileInputStream(fileDir);
             codeReader = new InputStreamReader(codeFileInput);
-            LoadCode();// 将字符首次导入到缓冲区
+            loadCode();// 将字符首次导入到缓冲区
 
             this.txt_output = txt_output;
             if (this.txt_output) {
@@ -92,7 +92,7 @@ public class Lexer {
      *
      * @return 返回所有保留字的基于保留字符串的哈希表
      */
-    private static Hashtable<String, Word> InitReserveWords() {
+    private static Hashtable<String, Word> initReserveWords() {
         var reserve_words = new Hashtable<String, Word>();
         reserve_words.put("program", new Word("program", Tag.PROGRAM));
         reserve_words.put("const", new Word("const", Tag.CONST));
@@ -115,7 +115,7 @@ public class Lexer {
     /**
      * 加载代码文本到缓冲区
      */
-    private void LoadCode() {
+    private void loadCode() {
         try {
             if (file_end) throw new Exception("重复读取，文件读取已经完毕");
             int len;
@@ -136,9 +136,9 @@ public class Lexer {
     /**
      * 读取缓冲区的一个字符到ch
      */
-    private void ReadChar() {
+    private void readChar() {
         try {
-            if (buffer_ptr == bufferSize && !file_end) LoadCode();
+            if (buffer_ptr == bufferSize && !file_end) loadCode();
             else ch = buffer[buffer_ptr++];
             ++col;
         } catch (Exception e) {
@@ -152,7 +152,7 @@ public class Lexer {
      * @return 返回词法单元类型及其属性
      * @throws Exception <br>e1:非法字符<br>e2:未补全的 := 符号
      */
-    public Token AnalyseToken() throws Exception {
+    public Token analyseToken() throws Exception {
         preCol = col;
         preLine = line;
         // 是空白字符
@@ -162,7 +162,7 @@ public class Lexer {
                 col = 0;
                 if (txt_output) codeAnalyseWriter.write("\r\n");
             }
-            ReadChar();
+            readChar();
         }
         // 判断是否位于文件末尾
         if (ch == '\0') {
@@ -174,7 +174,7 @@ public class Lexer {
             StringBuilder stringBuilder = new StringBuilder(cur_num);
             while (Character.isDigit(ch)) {
                 stringBuilder.append(ch);
-                ReadChar();
+                readChar();
             }
             if (Character.isUpperCase(ch) || Character.isLowerCase(ch))
                 throw new LexerException(3, ch, line, col);
@@ -187,7 +187,7 @@ public class Lexer {
             StringBuilder stringBuilder = new StringBuilder(cur_word);
             while (Character.isUpperCase(ch) || Character.isLowerCase(ch) || Character.isDigit(ch)) {
                 stringBuilder.append(ch);
-                ReadChar();
+                readChar();
             }
             cur_word = stringBuilder.toString();
             var words_token = reserve_words.get(cur_word);
@@ -202,52 +202,52 @@ public class Lexer {
         switch (ch) {
             case '=' -> {
                 token_symbol = new Word("=", Tag.LOP);
-                ReadChar();
+                readChar();
             }
             case '<' -> {
-                ReadChar(); // 继续读取缓冲区下一个字符
+                readChar(); // 继续读取缓冲区下一个字符
                 if (ch == '=') {
                     token_symbol = new Word("<=", Tag.LOP);
-                    ReadChar();
+                    readChar();
                 } else if (ch == '>') {
                     token_symbol = new Word("<>", Tag.LOP);
-                    ReadChar();
+                    readChar();
                 } else token_symbol = new Word("<", Tag.LOP);
             }
             case '>' -> {
-                ReadChar();// 继续读取缓冲区下一个字符
+                readChar();// 继续读取缓冲区下一个字符
                 if (ch == '=') {
                     token_symbol = new Word(">=", Tag.LOP);
-                    ReadChar();
+                    readChar();
                 } else token_symbol = new Word(">", Tag.LOP);
             }
             case '+' -> {
                 token_symbol = new Word("+", Tag.AOP);
-                ReadChar();
+                readChar();
             }
             case '-' -> {
                 token_symbol = new Word("-", Tag.AOP);
-                ReadChar();
+                readChar();
             }
             case '*' -> {
                 token_symbol = new Word("*", Tag.MOP);
-                ReadChar();
+                readChar();
             }
             case '/' -> {
                 token_symbol = new Word("/", Tag.MOP);
-                ReadChar();
+                readChar();
             }
             case ':' -> {
-                ReadChar();
+                readChar();
                 if (ch == '=') {
                     token_symbol = new Word(":=", Tag.ASSIGN);
-                    ReadChar();
+                    readChar();
                 } else throw new LexerException(2, ':', line, col - 1);
             }
             // 分隔符
             case '(', ')', ',', ';' -> {
                 token_symbol = new Word(String.valueOf(ch), Tag.SPLIT);
-                ReadChar();
+                readChar();
             }
             // 非法字符
             default -> throw new LexerException(1, ch, line, col);
@@ -255,7 +255,7 @@ public class Lexer {
         return token_symbol;
     }
 
-    private void WriteToken(Token token) throws IOException {
+    private void writeToken(Token token) throws IOException {
         if (txt_output) {
             String token_out_str;
             if (Objects.requireNonNull(token.getTag()) == Tag.INTEGER) {
@@ -284,14 +284,14 @@ public class Lexer {
      * @return
      * @throws Exception
      */
-    public ArrayList<Token> AnalyseCode() throws Exception {
+    public ArrayList<Token> analyseCode() throws Exception {
         var TokenList = new ArrayList<Token>();
 
         try {
             while (ch != '\0') {
-                var token = AnalyseToken();
+                var token = analyseToken();
                 TokenList.add(token);
-                if (txt_output) WriteToken(token);
+                if (txt_output) writeToken(token);
             }
         } catch (LexerException e) {
             System.out.println((char) 27 + "[31m" + e.getMessage() + (char) 27 + "[0m");
@@ -299,20 +299,20 @@ public class Lexer {
             codeAnalyseWriter.close();
             switch (e.exception_code) {
                 case 1 -> {
-                    ReadChar();
+                    readChar();
                 }
                 case 2 -> {
                 }
                 case 3 -> {
-                    ReadChar();
+                    readChar();
                     while (Character.isUpperCase(ch) ||
                             Character.isLowerCase(ch) ||
                             Character.isDigit(ch)) {
-                        ReadChar();
+                        readChar();
                     }
                 }
             }
-            AnalyseCode();
+            analyseCode();
         }finally {
             codeAnalyseWriter.close();
             codeReader.close();
@@ -350,7 +350,7 @@ public class Lexer {
         String fileDir = scanner.nextLine();
         Lexer lexer_test = new Lexer(fileDir, true);
         try {
-            var token_test_list = lexer_test.AnalyseCode();
+            var token_test_list = lexer_test.analyseCode();
             System.out.println(token_test_list);
 
         } catch (Exception e) {

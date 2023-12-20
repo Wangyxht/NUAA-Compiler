@@ -1,4 +1,4 @@
-package compiler.exceptions.parserExceptions;
+package compiler.exceptions;
 
 public class WriteExpEmptyException extends ParserException{
     public WriteExpEmptyException() {

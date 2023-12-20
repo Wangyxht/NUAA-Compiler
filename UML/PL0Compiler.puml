@@ -1,0 +1,41 @@
+@startuml
+'https://plantuml.com/class-diagram
+package "compiler.mian"{
+
+    class PL0_Compiler{
+       - Lexer // 词法分析器
+       - Interpreter // 代码解释器
+       + compilePL0Code()
+       + executePcode()
+
+    }
+}
+
+package "lexer"{
+    class Lexer {
+        - codeReader // 输入源读取器
+        + AnalyseToken() : token // 分析一个词法单元
+
+    }
+}
+
+package "interpreter"{
+    class Interpreter{
+        - int[] controlStack // 运行时刻栈
+        - codeArea // 代码区
+        + executePcodes() // 运行PCode序列
+    }
+}
+
+package "symbols"{
+    class Symbols{
+        HashMap<SymbolInf> table // 符号表
+        Symbols prev
+    }
+}
+PL0_Compiler *-- Lexer
+PL0_Compiler *-- Interpreter
+PL0_Compiler "1"-"1" Symbols
+Symbols ->"contains" Symbols
+
+@enduml
