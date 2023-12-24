@@ -1,0 +1,32 @@
+@startuml
+'https://plantuml.com/class-diagram
+package Node{
+    abstract class Node{
+        long lexLine
+        long lexCol
+    }
+    class Expr{
+        + token baseToken
+    }
+    class Stmt
+    class Procedure{
+        + int procSize
+    }
+    class Block{
+        + int bodyEntry
+        + int varNum
+    }
+
+    Node <|-- Stmt
+    Node <|-- Expr
+    Stmt <|-- Procedure
+    Stmt <|-- Block
+    Stmt <|-- Assign
+    Stmt <|-- If
+    If <|-- If_with_Else
+    Expr <|-- Arith
+    Expr <|-- Unary
+    Expr <|-- Constant
+    Arith <|-- Logical
+}
+@enduml

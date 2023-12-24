@@ -8,14 +8,17 @@ public class ProcedureInf extends SymbolInf {
     int addr;
     /** 过程分配空间大小 **/
     int size;
+    /** 形参个数 */
+    int paraNum;
     /** 活动记录基础空间（不包括形式单元与局部变量与运算栈）*/
     static public final int basicSize = 3;
 
-    public ProcedureInf(int depth, int addr, int size) {
+    public ProcedureInf(int depth, int addr, int size, int paraNum) {
         super(IDType.PROC_ID);
         this.depth = depth;
         this.addr = addr;
         this.size = size;
+        this.paraNum = paraNum;
     }
 
     public int getDepth() {

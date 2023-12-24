@@ -64,4 +64,9 @@ public class pCodeArea {
     public int codeAreaSize(){
         return codes.size();
     }
+
+    public void clearPcode(){
+        codes.clear();
+
+    }
 }

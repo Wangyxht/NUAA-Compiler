@@ -1,7 +1,8 @@
 program progTest;
     var hasAnswer, sum, isEven, inputa, inputb, inputc;
     procedure equationHasAnswer(input1, input2, input3);
-        var D;
+        const a := 10;
+        var D, A, D;
         procedure delta(a, b, c);
             begin
                 D := b * b - 4 * a * c;
@@ -12,18 +13,19 @@ program progTest;
                     hasAnswer := 0
             end
         begin
+            a := 11;
             call delta(input1, input2, input3);
             write(D)
         end
 
     procedure fibonacci(n);
         begin
-            if n <= 2
+            if n <= 2 then
                 fibn := 1
             else
             begin
                 t := 0;
-                call fibonacci(n-1)
+                call fibonacci(n-1, 10)
                 t := t + fibn;
                 call fibonacci(n-2)
                 t := t + fibn;

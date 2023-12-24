@@ -1,0 +1,58 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+package interpreter{
+    class Interpreter{
+        - int[] controlStack 运行时刻栈
+        - int sp 帧指针
+        - int top 栈指针
+        - pCodeArea codeArea 代码区
+        - pCode pcode 当前代码
+        ...
+
+        ...()
+
+    }
+}
+
+package pCode{
+    class pCode{
+        pCodeType type 指令识别码
+        int L 第一参数
+        int a 第二参数
+    }
+
+    class pCodeArea{
+        ArrayList<pCode> codes
+    }
+
+    enum pCodeType{
+        STO
+        INT
+        CALL
+        PARAM
+        OPR
+        ...
+    }
+
+    enum OpCode{
+            PLUS
+            MINUS
+            MUTI
+            DIV
+            ...
+    }
+
+
+    pCode --> pCodeType
+    pCode -> OpCode
+    pCodeArea *- pCode
+}
+
+Interpreter o-- pCodeArea
+Interpreter -- pCode.pCode
+Interpreter --> pCode.OpCode
+
+
+
+@enduml

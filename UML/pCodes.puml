@@ -1,0 +1,95 @@
+@startuml
+'https://plantuml.com/class-diagram
+package compiler.main{
+    class PL0_Compiler{
+        - pCdeArea codeArea;
+        ...
+
+        - generateCode()
+        - backPatch()
+    }
+
+}
+
+package pCode{
+    class pCode{
+        pCodeType type 指令识别码
+        int L 第一参数
+        int a 第二参数
+    }
+
+    class pCodeArea{
+        ArrayList<pCode> codes
+                + generateCode()
+                + backPatch()
+    }
+
+    enum pCodeType{
+        STO
+        INT
+        CALL
+        PARAM
+        OPR
+        ...
+    }
+
+    enum OpCode{
+            PLUS
+            MINUS
+            MUTI
+            DIV
+            ...
+    }
+
+
+    pCode --> pCodeType
+    pCode -> OpCode
+    pCodeArea *- pCode
+}
+
+package symbols{
+    class Symbols{
+        HashMap<String, SymbolInf> table
+        Symbols prev
+    }
+
+    abstract class SymbolInf{
+        IDtype type
+    }
+
+    class VariableInf{
+        int depth
+        int addr
+    }
+
+    class ConstInf{
+        int val
+    }
+
+    class ProcedureInf{
+        int depth
+        int addr
+        int size
+
+    }
+
+    enum IDtype{
+        VAR_ID
+        PROC_ID
+        CONST_ID
+    }
+
+    Symbols *-- SymbolInf
+    SymbolInf <|-- VariableInf
+    SymbolInf <|-- ConstInf
+    SymbolInf <|-- ProcedureInf
+    SymbolInf - IDtype
+    Symbols  o-- Symbols
+
+}
+
+PL0_Compiler o-- pCodeArea
+PL0_Compiler -- Symbols
+
+
+@enduml

@@ -9,6 +9,7 @@ import lexer.*;
 import symbols.*;
 
 import java.util.ArrayList;
+import java.util.Scanner;
 import java.util.Stack;
 
 /**
@@ -34,7 +35,7 @@ public class PL0_Compiler {
     /**
      * 根符号表，用于记录顶层符号表
      */
-    private final Symbols root_table = new Symbols(null);
+    private Symbols root_table = new Symbols(null);
     /**
      * 前置符号表，用于记录前置分析的符号表
      */
@@ -55,12 +56,14 @@ public class PL0_Compiler {
     PL0_Compiler() {}
 
     public static void main(String[] args) throws Exception {
-//        Scanner scanner = new Scanner(System.in);
-//        System.out.print("请输入待编译文件的文件路径：");
-//        String filePath = scanner.nextLine();
-        PL0_Compiler PL0Compiler = new PL0_Compiler();
-        PL0Compiler.executePL0code("test/correct_test/ProgTest.pas");
-        return;
+        do {
+            Scanner scanner = new Scanner(System.in);
+            System.out.print("请输入待编译并运行文件的文件路径,输入-over结束：");
+            String filePath = scanner.nextLine();
+            if(filePath.equals("-over")) break;
+            PL0_Compiler PL0Compiler = new PL0_Compiler();
+            PL0Compiler.executePL0code(filePath);
+        } while(true);
     }
 
     /**
@@ -71,6 +74,10 @@ public class PL0_Compiler {
     public void compileCode(String codePath) throws Exception {
         ParserException.exceptions_num = 0;
         SymbolsException.exceptions_num = 0;
+        root_table = new Symbols(null);
+        prev_table = null;
+        cur_table = root_table;
+        codeArea.clearPcode();
         lexer = new Lexer(codePath, false);
         this.prog();
 
@@ -150,7 +157,7 @@ public class PL0_Compiler {
             token = lexer.analyseToken();
 //            if (token.getTag().equals(Tag.EOF)) {
 //                System.exit(1);
-//            }
+//           }
         } catch (Exception e) {
             System.out.println((char) 27 + "[31m" + e.getMessage() + (char) 27 + "[0m");
         }
@@ -401,7 +408,7 @@ public class PL0_Compiler {
                 ScanToken();
                 if (!Match(",", ";")) StrictMatch(",");
 
-            } catch (NoSemicolonException e) { // 缺失逗号异常
+            } catch (NoSemicolonException e) { // 缺失引号异常
                 while (!Match(Tag.BEGIN)) {
                     ScanToken();
                 }
@@ -527,7 +534,7 @@ public class PL0_Compiler {
 
         // 读取语句块, 生成过程代码
         prev_table.putSymbol(procedureName,
-                new ProcedureInf(depth, -1, -1));
+                new ProcedureInf(depth, -1, -1, paraNum));
         Block proc_block = (Block) block(depth + 1, paraNum, procedureName);
         // 计算程序栈空间，获取程序入口
         int procSize = proc_block.varNum + paraNum;
@@ -597,7 +604,6 @@ public class PL0_Compiler {
                 ScanToken();
             }
             if (Match(Tag.END)) {
-                ScanToken();
                 stmt_stack.pop();
                 return null;
             }
@@ -634,6 +640,7 @@ public class PL0_Compiler {
                 var target = token;
                 var targetName = ((Word) token).getContent();
                 ScanToken();
+
                 try {
                     StrictMatch(Tag.ASSIGN);
                 } catch (InvalidAssign e) {
@@ -730,6 +737,7 @@ public class PL0_Compiler {
                 ScanToken();
                 String procedureName = null;
                 Token procedureID = null;
+                int callParaNum = 0;
                 try {
                     StrictMatch(Tag.ID);
                     procedureID = token;
@@ -755,9 +763,11 @@ public class PL0_Compiler {
                 // 有参函数调用
                 if (!Match(")")) {
                     addParams(args, depth, Tag.CALL);
+                    callParaNum++;
                     while (Match(",")) {
                         ScanToken();
                         addParams(args, depth, Tag.CALL);
+                        callParaNum++;
                     }
                 }
 
@@ -771,6 +781,7 @@ public class PL0_Compiler {
                 x = new Call(procedureID, args);
 
                 // 生成调用代码
+                cur_table.checkParaNum(procedureName, callParaNum);
                 var procedureInf = cur_table.getProcedure(procedureName);
                 generateCode(pCodeType.CAL,
                         depth - procedureInf.getDepth(),
@@ -909,9 +920,6 @@ public class PL0_Compiler {
             readList.add(token);
             // 获取ID信息
             var targetID = ((Word) token).getContent();
-            if(targetID == null){
-                // TODO: 报错
-            }
             var targetInf = cur_table.getVariable(targetID);
             // 生成读入代码
             generateCode(pCodeType.RED, null, (Integer) null);

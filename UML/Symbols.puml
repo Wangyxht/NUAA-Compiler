@@ -1,0 +1,47 @@
+@startuml
+
+'https://plantuml.com/class-diagram
+
+package symbols{
+    class Symbols{
+        HashMap<String, SymbolInf> table
+        Symbols prev
+    }
+
+    abstract class SymbolInf{
+        IDtype type
+    }
+
+    class VariableInf{
+        int depth
+        int addr
+    }
+
+    class ConstInf{
+        int val
+    }
+
+    class ProcedureInf{
+        int depth
+        int addr
+        int size
+
+    }
+
+    enum IDtype{
+        VAR_ID
+        PROC_ID
+        CONST_ID
+    }
+
+    Symbols *-- SymbolInf
+    SymbolInf <|-- VariableInf
+    SymbolInf <|-- ConstInf
+    SymbolInf <|-- ProcedureInf
+    SymbolInf - IDtype
+    Symbols  o-- Symbols
+
+}
+
+
+@enduml

@@ -3,20 +3,19 @@ programme PROGRAMTEST;
     var e,f g h i,m,n,,;
     procedure procedure01(a,c d ,e;
         const a = 1, b:=2;
-        var a,b e f;
+        var a,b e f
         begin
-            a := ( 9 * + ;
             b := a + 7 - (5) ;
         end
-    procedure procedure02 a,b,c);
+    procedure procedure02 (a,b,c);
         const index := 10, d := 2
-        var a
+        var a,a,a
         begin
             if a + b = 8
                 begin
                 b = 1;
-                c := 2
-                end;
+                c := 2;
+                end
             else
                 begin
                 a := 12;
@@ -52,13 +51,15 @@ programme PROGRAMTEST;
             write ();
         end
     begin
+        call procedure03(v);
         if a := b then
          begin
          a = A + b;
          while a <> b
             i := i - 1
-            c = a -4
-            end;
+            c = a - 4;
+            e := i + 1
+            end
          end
     end
 

@@ -33,7 +33,18 @@ public class Symbols {
         throw new SymbolsNotDeclareException(symbol_name);
     }
 
+    private SymbolInf getSymbolNoException(String symbol_name) {
+        var cur_table = this;
+        while(cur_table != null){
+            SymbolInf symbol = cur_table.table.get(symbol_name);
+            if(symbol != null) return symbol;
+            cur_table = cur_table.prev;
+        }
+        return null;
+    }
+
     public ProcedureInf getProcedure(String symbol_name){
+        if(symbol_name == null) return new ProcedureInf(-1, -1, -1, -1);
         if(symbol_name.equals("")) return null;
         try{
             SymbolInf symbolInf = getSymbol(symbol_name);
@@ -41,7 +52,7 @@ public class Symbols {
         } catch (SymbolsNotDeclareException e) {
             errorSymbol.add(symbol_name);
             e.PrintExceptionMessage();
-            return new ProcedureInf(-1, -1, -1);
+            return new ProcedureInf(-1, -1, -1, -1);
         }
 
     }
@@ -49,9 +60,13 @@ public class Symbols {
     public VariableInf getVariable(String symbol_name) {
         try{
             SymbolInf symbolInf = getSymbol(symbol_name);
-            return symbolInf instanceof VariableInf ? (VariableInf) symbolInf : null;
+            if(!(symbolInf instanceof VariableInf)) throw new SymbolNotVariableException(symbol_name);
+            return (VariableInf)symbolInf;
         } catch (SymbolsNotDeclareException e){
             errorSymbol.add(symbol_name);
+            e.PrintExceptionMessage();
+            return new VariableInf(-1, -1);
+        } catch (SymbolNotVariableException e) {
             e.PrintExceptionMessage();
             return new VariableInf(-1, -1);
         }
@@ -71,11 +86,33 @@ public class Symbols {
     }
 
     public void putSymbol(String symbol_name, SymbolInf symbol){
-        if(table.get(symbol_name) != null) return;
-        if(symbol instanceof VariableInf variableInf){
-            variableInf.addr = variableAddr ++;
+        boolean isProc = true;
+        var symbol_check = getSymbolNoException(symbol_name);
+        if(!(symbol_check instanceof ProcedureInf)) isProc = false;
+
+        try {
+            if (table.get(symbol_name) != null || isProc) {
+                throw new SymbolReDeclareException(symbol_name);
+            }
+
+            if (symbol instanceof VariableInf variableInf) {
+                variableInf.addr = variableAddr++;
+            }
+            table.put(symbol_name, symbol);
+        } catch (SymbolReDeclareException e){
+            e.PrintExceptionMessage();
         }
-        table.put(symbol_name, symbol);
+    }
+
+    public void checkParaNum(String symbol_name, Integer paraNum){
+        try{
+            var procInf = getProcedure(symbol_name);
+            if(procInf.paraNum == -1) return;
+            if(paraNum.equals(procInf.paraNum)) return;
+            throw new SymbolCallException(symbol_name);
+        } catch (SymbolCallException e) {
+            e.PrintExceptionMessage();
+        }
     }
 
     public void setProcedureSize(String symbol_name, int size){

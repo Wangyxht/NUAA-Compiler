@@ -74,7 +74,6 @@ public class Lexer {
             var codeFileInput = new FileInputStream(fileDir);
             codeReader = new InputStreamReader(codeFileInput);
             loadCode();// 将字符首次导入到缓冲区
-
             this.txt_output = txt_output;
             if (this.txt_output) {
                 var codeFileOutput = new FileOutputStream("code_lex_analyse.txt");
@@ -83,6 +82,7 @@ public class Lexer {
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
+            System.exit(1);
         }
 
     }
